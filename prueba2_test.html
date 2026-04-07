@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba Test</title>
+    <script>
+        function testFunctionality() {
+            const sampleData = ['Test 1', 'Test 2', 'Test 3'];
+            const output = document.getElementById('output');
+            sampleData.forEach(data => {
+                const div = document.createElement('div');
+                div.textContent = data;
+                output.appendChild(div);
+            });
+        }
+        window.onload = testFunctionality;
+    </script>
+</head>
+<body>
+    <h1>Interface Testing</h1>
+    <div id="output"></div>
+</body>
+</html>
