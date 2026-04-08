@@ -1,0 +1,96 @@
+import pandas as pd
+import streamlit as st
+import os
+
+# Archivo de persistencia
+archivo_inventario = "inventario_ferreteria.xlsx"
+columnas_inventario = ["Código", "Artículo", "Categoría", "Stock", "Precio Unitario"]
+
+# Crear archivo si no existe
+if not os.path.exists(archivo_inventario):
+    df = pd.DataFrame(columns=columnas_inventario)
+    df.to_excel(archivo_inventario, index=False)
+else:
+    df = pd.read_excel(archivo_inventario)
+
+# Actualizar el archivo de Excel
+def guardar_datos(df):
+    df.to_excel(archivo_inventario, index=False)
+
+# Título principal
+st.title("📦 Sistema de Gestión de Inventario - Ferretería")
+
+# Barra lateral con métricas
+st.sidebar.title("📊 Métricas Clave")
+total_articulos = len(df)
+valor_total_inventario = df["Stock"].multiply(df["Precio Unitario"], fill_value=0).sum()
+alertas_stock = len(df[df["Stock"] < 5])
+
+st.sidebar.metric("Total de Artículos", total_articulos)
+st.sidebar.metric("Valor Total del Inventario ($)", f"{valor_total_inventario:.2f}")
+st.sidebar.metric("Alertas de Stock Bajo", alertas_stock)
+
+# Separar en pestañas
+tab1, tab2, tab3 = st.tabs(["📦 Ver Stock", "➕ Añadir/Editar", "🗑️ Borrar"])
+
+# Tab 1: Ver Stock
+with tab1:
+    st.header("📦 Ver Stock - Inventario Actual")
+    
+    # Resaltar stock bajo
+    def resaltar_stock_bajo(row):
+        if row["Stock"] < 5:
+            color = "background-color: #FFCCCC"  # Fondo rojo claro
+        else:
+            color = ""
+        return [color] * len(row)
+
+    # Buscar productos por Código o Artículo
+    consulta = st.text_input("🔎 Buscar (por Código o Artículo):")
+    if consulta:
+        resultados = df[df["Código"].str.contains(consulta, case=False, na=False) |
+                        df["Artículo"].str.contains(consulta, case=False, na=False)]
+    else:
+        resultados = df
+
+    # Mostrar tabla interactiva con resaltado
+    st.dataframe(resultados.style.apply(resaltar_stock_bajo, axis=1), height=400)
+
+# Tab 2: Añadir/Editar
+with tab2:
+    st.header("➕ Añadir / Editar Artículo")
+    
+    codigo = st.text_input("Código", max_chars=10).upper()
+    nuevo_articulo = st.text_input("Artículo")
+    categoria = st.text_input("Categoría")
+    stock = st.number_input("Stock", min_value=0, step=1)
+    precio = st.number_input("Precio Unitario ($)", min_value=0.0, step=0.01)
+    
+    if st.button("Guardar"):
+        if not codigo or not nuevo_articulo or not categoria:
+            st.warning("Por favor, complete todos los campos requeridos.")
+        else:
+            if codigo in df["Código"].values:
+                # Actualizar artículo existente
+                df.loc[df["Código"] == codigo, ["Artículo", "Categoría", "Stock", "Precio Unitario"]] = [nuevo_articulo, categoria, stock, precio]
+                st.success(f"El artículo con código {codigo} ha sido actualizado.")
+            else:
+                # Añadir nuevo artículo
+                nuevo_registro = {"Código": codigo, "Artículo": nuevo_articulo, "Categoría": categoria, "Stock": stock, "Precio Unitario": precio}
+                df = df.append(nuevo_registro, ignore_index=True)
+                st.success(f"Nuevo artículo añadido: {nuevo_articulo}")
+            guardar_datos(df)
+
+# Tab 3: Borrar
+with tab3:
+    st.header("🗑️ Borrar Artículo")
+    
+    codigo_borrar = st.text_input("Código del artículo a borrar", max_chars=10).upper()
+    
+    if st.button("Borrar"):
+        if codigo_borrar in df["Código"].values:
+            df = df[df["Código"] != codigo_borrar]
+            guardar_datos(df)
+            st.success(f"Artículo con código {codigo_borrar} eliminado exitosamente.")
+        else:
+            st.warning(f"No se encontró el artículo con código {codigo_borrar}.")
